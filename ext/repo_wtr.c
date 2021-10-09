@@ -134,7 +134,7 @@ static ZSTDFILE *zstdopen(const char *path, const char *mode, int fd)
     }
     else
     {
-        fp = fdopen(path, encoding ? "w" : "r") Ç;
+        fp = fdopen(path, encoding ? "w" : "r");
     }
 
     if (!fp)
