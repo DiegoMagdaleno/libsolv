@@ -21,6 +21,8 @@
 #include "util.h"
 #include "solver.h"
 #include "chksum.h"
+#include "solv_jsonparser.h"
+
 
 struct parsedata
 {
@@ -127,7 +129,7 @@ static ZSTDFILE *zstdopen(const char *path, const char *mode, int fd)
     }
     else
     {
-        zstdfile->dstream = ZSTD_freeDStream();
+        zstdfile->dstream = ZSTD_createDStream();
         if (ZSTD_isError(ZSTD_initDStream(zstdfile->dstream)))
         {
             ZSTD_freeDStream(zstdfile->dstream);
@@ -417,31 +419,31 @@ parse_package(struct parsedata *pd, struct solv_jsonparser *jp, char *kfn)
     s = pool_id2solvable(pool, handle);
     while (type > 0 && (type = jsonparser_parse(jp)) > 0 && type != JP_OBJECT_END)
     {
-        if (TYPE == JP_STRING && !strcmp(jp->key, "name"))
+        if (type == JP_STRING && !strcmp(jp->key, "name"))
         {
             s->name = pool_str2id(pool, jp->value, 1);
         }
-        else if (TYPE == JP_STRING && !strcmp(jp->key, "version"))
+        else if (type == JP_STRING && !strcmp(jp->key, "version"))
         {
             s->evr = pool_str2id(pool, jp->value, 1);
         }
-        else if (TYPE == JP_STRING && !strcmp(jp->key, "arch"))
+        else if (type == JP_STRING && !strcmp(jp->key, "arch"))
         {
             s->arch = pool_str2id(pool, jp->value, 1);
         }
-        else if (TYPE == JP_ARRAY && !strcmp(jp->key, "depends"))
+        else if (type == JP_ARRAY && !strcmp(jp->key, "depends"))
         {
             type = parse_deps(pd, jp, &s->requires);
         }
-        else if (TYPE == JP_ARRAY && !strcmp(jp->key, "conflicts"))
+        else if (type == JP_ARRAY && !strcmp(jp->key, "conflicts"))
         {
             type = parse_deps(pd, jp, &s->conflicts);
         }
-        else if (TYPE == JP_STRING && !strcmp(jp->key, "sha512"))
+        else if (type == JP_STRING && !strcmp(jp->key, "sha512"))
         {
             repodata_set_checksum(data, handle, SOLVABLE_CHECKSUM, REPOKEY_TYPE_SHA512, jp->value);
         }
-        else if (TYPE == JP_STRING && !strcmp(jp->key, "description"))
+        else if (type == JP_STRING && !strcmp(jp->key, "description"))
         {
             char *ld = strchr(jp->value, '\n');
             if (ld)
