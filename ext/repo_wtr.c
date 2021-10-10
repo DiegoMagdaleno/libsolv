@@ -23,7 +23,6 @@
 #include "chksum.h"
 #include "solv_jsonparser.h"
 
-
 struct parsedata
 {
     Pool *pool;
@@ -456,6 +455,25 @@ parse_package(struct parsedata *pd, struct solv_jsonparser *jp, char *kfn)
                 repodata_set_str(data, s - pool->solvables, SOLVABLE_DESCRIPTION, jp->value);
             }
             repodata_set_set(data, s - pool->solvables, SOLVABLE_SUMMARY, jp->value);
+        }
+    }
+    return type;
+}
+
+static int parse_packages(struct parsedata *pd, struct solv_jsonparser *jp)
+{
+    int type = JP_OBJECT;
+    while (type > 0 && (type = jsonparser_parse(jp)) > 0 && type != JP_OBJECT_END)
+    {
+        if (type == JP_OBJECT)
+        {
+            char *fn = solv_strdup(jp->key);
+            type = parse_package(pd, jp, fn);
+            solv_free(fn);
+        }
+        else
+        {
+            type = jsonparser_skip(jp, type);
         }
     }
     return type;
