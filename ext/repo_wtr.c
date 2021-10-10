@@ -391,7 +391,7 @@ static int
 parse_deps(struct parsedata *pd, struct solv_jsonparser *jp, Offset *depp)
 {
     int type = JP_ARRAY;
-    while (type > &&(type = jsonparser_parse(jp)) > 0 && type != JP_ARRAY_END)
+    while (type > 0 &&(type = jsonparser_parse(jp)) > 0 && type != JP_ARRAY_END)
     {
         if (type == JP_STRING)
         {
