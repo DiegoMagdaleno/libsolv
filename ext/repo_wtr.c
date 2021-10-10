@@ -1,4 +1,5 @@
 /*
+ * 
  * Copyright (c) 2021, Diego Magdaleno
  *   
  * This program is licensed under the BSD license, read LICENSE.BSD
@@ -6,6 +7,8 @@
  * 
  * Read a Winter repo 
 */
+
+#define _GNU_SOURCE
 
 #include <zstd.h>
 #include <stdio.h>
@@ -17,7 +20,7 @@
 #include "repo.h"
 #include "util.h"
 #include "solver.h"
-#include "checksum.h"
+#include "chksum.h"
 
 struct parsedata
 {
@@ -169,41 +172,30 @@ static int zstdclose(void *cookie)
     int rc;
 
     if (!zstdfile)
-    {
         return -1;
-    }
     if (zstdfile->encoding)
     {
         for (;;)
         {
-            if (!eof && zstdfile->in.pos == zstdfile->in.size)
-            {
-                zstdfile->in.pos = 0;
-                zstdfile->in.size = fread(zstdfile->buf, 1, sizeof(zstdfile->buf), zstdfile->file);
-                if (!zstdfile->in.size)
-                {
-                    eof = 1;
-                }
-            }
-            if (ret || !eof)
-            {
-                ret = ZSTD_decompressStream(zstdfile->dstream, &zstdfile->out, &zstdfile->in);
-            }
-            if (ret == 0 && eof)
-            {
-                zstdfile->eof = 1;
-                return zstdfile->out.pos;
-            }
+            size_t ret;
+            zstdfile->out.pos = 0;
+            ret = ZSTD_endStream(zstdfile->cstream, &zstdfile->out);
             if (ZSTD_isError(ret))
-            {
                 return -1;
-            }
-            if (zstdfile->out.pos == len)
-            {
-                return len;
-            }
+            if (zstdfile->out.pos && fwrite(zstdfile->buf, 1, zstdfile->out.pos, zstdfile->file) != zstdfile->out.pos)
+                return -1;
+            if (ret == 0)
+                break;
         }
+        ZSTD_freeCStream(zstdfile->cstream);
     }
+    else
+    {
+        ZSTD_freeDStream(zstdfile->dstream);
+    }
+    rc = fclose(zstdfile->file);
+    solv_free(zstdfile);
+    return rc;
 }
 
 static ssize_t zstdread(void *cookie, char *buf, size_t len)
@@ -391,7 +383,7 @@ static int
 parse_deps(struct parsedata *pd, struct solv_jsonparser *jp, Offset *depp)
 {
     int type = JP_ARRAY;
-    while (type > 0 &&(type = jsonparser_parse(jp)) > 0 && type != JP_ARRAY_END)
+    while (type > 0 && (type = jsonparser_parse(jp)) > 0 && type != JP_ARRAY_END)
     {
         if (type == JP_STRING)
         {
