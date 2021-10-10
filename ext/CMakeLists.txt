@@ -74,6 +74,11 @@ IF (ENABLE_DEBIAN)
 	repo_deb.h)
 ENDIF (ENABLE_DEBIAN)
 
+IF (ENABLE_WINTER) 
+    SET (libsolvext_SRCS ${libsolvext_SRCS}
+    repo_wtr.c)
+ENDIF (ENABLE_WINTER)
+
 IF (ENABLE_HELIXREPO)
     SET (libsolvext_SRCS ${libsolvext_SRCS}
 	repo_helix.c)
