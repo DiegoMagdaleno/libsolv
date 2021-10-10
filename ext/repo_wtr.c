@@ -411,9 +411,6 @@ parse_package(struct parsedata *pd, struct solv_jsonparser *jp, char *kfn)
     Repodata *data = pd->data;
     Solvable *s;
     Id handle;
-    char *fn = 0;
-    char *subdir = 0;
-    Id *fndata, fntype = 0;
 
     handle = repo_add_solvable(pd->repo);
     s = pool_id2solvable(pool, handle);
@@ -455,7 +452,11 @@ parse_package(struct parsedata *pd, struct solv_jsonparser *jp, char *kfn)
             {
                 repodata_set_str(data, s - pool->solvables, SOLVABLE_DESCRIPTION, jp->value);
             }
-            repodata_set_set(data, s - pool->solvables, SOLVABLE_SUMMARY, jp->value);
+            repodata_set_str(data, s - pool->solvables, SOLVABLE_SUMMARY, jp->value);
+        }
+        else if (type == JP_STRING && !strcmp(jp->key, "filename"))
+        {
+            repodata_set_location(data, s - pool->solvables, 0, 0, jp->value);
         }
     }
     return type;
