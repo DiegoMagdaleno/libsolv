@@ -462,8 +462,8 @@ parse_package(struct parsedata *pd, struct solv_jsonparser *jp, char *kfn)
 
 static int parse_packages(struct parsedata *pd, struct solv_jsonparser *jp)
 {
-    int type = JP_OBJECT;
-    while (type > 0 && (type = jsonparser_parse(jp)) > 0 && type != JP_OBJECT_END)
+    int type = JP_ARRAY;
+    while (type > 0 && (type = jsonparser_parse(jp)) > 0 && type != JP_ARRAY_END)
     {
         if (type == JP_OBJECT)
         {
