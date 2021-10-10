@@ -478,3 +478,47 @@ static int parse_packages(struct parsedata *pd, struct solv_jsonparser *jp)
     }
     return type;
 }
+
+/*
+ * We need to research if we are losing any significant speed when doing:
+ * binencode -> JSON -> Temporary JSON file in the Rust side, in order
+ * to parse it here and make it a solvable
+*/
+int repo_add_winter(Repo *repo, FILE *fp, int flags)
+{
+    Pool *pool = repo->pool;
+    struct solv_jsonparser jp;
+    struct parsedata pd;
+    Repodata *data;
+    int type, ret = 0;
+
+    data = repo_add_repodata(repo, flags);
+
+    memset(&pd, 0, sizeof(pd));
+    pd.pool = pool;
+    pd.repo = repo;
+    pd.data = data;
+
+    stringpool_init_empty(&pd.fnpool);
+    queue_init(&pd.fndata);
+
+    jsonparser_init(&jp, fp);
+    if ((type = jsonparser_parse(&jp)) != JP_ARRAY)
+    {
+        ret = pool_error(pool, -1, "Repository is not an array of packages");
+    }
+    else if ((type = parse_packages(&pd, &jp)) != JP_ARRAY_END)
+    {
+        ret = pool_error(pool, -1, "Array format is corrupted %d", jp.line);
+    }
+    jsonparser_free(&jp);
+
+    queue_free(&pd.fndata);
+    stringpool_free(&pd.fnpool);
+    if (!(flags & REPO_NO_INTERNALIZE))
+    {
+        repodata_internalize(data);
+    }
+
+    return ret;
+}
