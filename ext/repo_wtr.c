@@ -22,6 +22,7 @@
 #include "solver.h"
 #include "chksum.h"
 #include "solv_jsonparser.h"
+#include "repo_wtr.h"
 
 struct parsedata
 {
