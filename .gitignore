@@ -3,3 +3,4 @@ build
 doc/*.xml
 tests/solver/data.libzypp/*/*.result
 src/solvversion.h
+.vscode/*

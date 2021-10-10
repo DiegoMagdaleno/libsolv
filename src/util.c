@@ -21,6 +21,7 @@
 
 #include "util.h"
 
+// Stands for out of memory.
 void
 solv_oom(size_t num, size_t len)
 {

@@ -21,10 +21,10 @@
 #include "conda.h"
 #endif
 
+ 
+#if defined(DEBIAN) || defined(MULTI_SEMANTICS) || defined(WINTER) 
 
-#if defined(DEBIAN) || defined(MULTI_SEMANTICS)
-
-/* debian type version compare */
+/* debian and Winter type version compare */
 int
 solv_vercmp_deb(const char *s1, const char *q1, const char *s2, const char *q2)
 {
@@ -66,7 +66,7 @@ solv_vercmp_deb(const char *s1, const char *q1, const char *s2, const char *q2)
 
 #endif
 
-#if !defined(DEBIAN) || defined(MULTI_SEMANTICS)
+#if !defined(DEBIAN) || defined(MULTI_SEMANTICS) || !defined(WINTER)
 
 /* rpm type version compare */
 /* note: the code assumes that *q1 and *q2 are not alphanumeric! */

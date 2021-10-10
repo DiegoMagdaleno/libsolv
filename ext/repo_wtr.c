@@ -6,7 +6,6 @@
  * 
  * Read a Winter repo 
 */
- 
 
 #include <zstd.h>
 #include <stdio.h>
@@ -289,4 +288,113 @@ static inline FILE *myzstdfdopen(int fd, const char *mode)
 {
     ZSTDFILE *zstdfile = zstdopen(0, mode, fd);
     return cookieopen(zstdfile, mode, zstdread, zstdwrite, zstdclose);
+}
+
+/* 
+ * Winter uses the same version format as Debian
+ * because Winter Package Format derieves from Novus
+ * designed by Hayden Seay, Ultra, SmushyTaco and Diego Magdaleno
+ * as a way to provide compat with APT, the version and dep parsing 
+ * is the same
+*/
+static Id
+parseonedep(Pool *pool, char *p)
+{
+    char *n, *ne, *e, *ee;
+    Id name, evr;
+    int flags;
+
+    while (*p == ' ' || *p == '\t' || *p == '\n')
+        p++;
+    if (!*p || *p == '(')
+        return 0;
+    n = p;
+    /* find end of name */
+    while (*p && *p != ' ' && *p != '\t' && *p != '\n' && *p != '(' && *p != '|')
+        p++;
+    ne = p;
+    while (*p == ' ' || *p == '\t' || *p == '\n')
+        p++;
+    evr = 0;
+    flags = 0;
+    e = ee = 0;
+    if (*p == '(')
+    {
+        p++;
+        while (*p == ' ' || *p == '\t' || *p == '\n')
+            p++;
+        if (*p == '>')
+            flags |= REL_GT;
+        else if (*p == '=')
+            flags |= REL_EQ;
+        else if (*p == '<')
+            flags |= REL_LT;
+        if (flags)
+        {
+            p++;
+            if (*p == '>')
+                flags |= REL_GT;
+            else if (*p == '=')
+                flags |= REL_EQ;
+            else if (*p == '<')
+                flags |= REL_LT;
+            else
+                p--;
+            p++;
+        }
+        while (*p == ' ' || *p == '\t' || *p == '\n')
+            p++;
+        e = p;
+        while (*p && *p != ' ' && *p != '\t' && *p != '\n' && *p != ')')
+            p++;
+        ee = p;
+        while (*p && *p != ')')
+            p++;
+        if (*p)
+            p++;
+        while (*p == ' ' || *p == '\t' || *p == '\n')
+            p++;
+    }
+    if (ne - n > 4 && ne[-4] == ':' && !strncmp(ne - 4, ":any", 4))
+    {
+        /* multiarch annotation */
+        name = pool_strn2id(pool, n, ne - n - 4, 1);
+        name = pool_rel2id(pool, name, ARCH_ANY, REL_MULTIARCH, 1);
+    }
+    else
+        name = pool_strn2id(pool, n, ne - n, 1);
+    if (e)
+    {
+        evr = pool_strn2id(pool, e, ee - e, 1);
+        name = pool_rel2id(pool, name, evr, flags, 1);
+    }
+    if (*p == '|')
+    {
+        Id id = parseonedep(pool, p + 1);
+        if (id)
+            name = pool_rel2id(pool, name, id, REL_OR, 1);
+    }
+    return name;
+}
+
+static int
+parse_deps(struct parsedata *pd, struct solv_jsonparser *jp, Offset *depp)
+{
+    int type = JP_ARRAY;
+    while (type > &&(type = jsonparser_parse(jp)) > 0 && type != JP_ARRAY_END)
+    {
+        if (type == JP_STRING)
+        {
+            Id id = parseonedep(pd->pool, jp->value);
+            if (id)
+            {
+                *depp = repo_addid(pd->repo, *depp, id, 0);
+            }
+        }
+        else
+        {
+            type = jsonparser_skip(jp, type);
+        }
+    }
+    return type;
 }
