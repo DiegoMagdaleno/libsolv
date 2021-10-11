@@ -109,6 +109,13 @@ TARGET_LINK_LIBRARIES (conda2solv toolstuff libsolvext libsolv ${SYSTEM_LIBRARIE
 SET (tools_list ${tools_list} conda2solv)
 ENDIF (ENABLE_CONDA)
 
+IF (ENABLE_WINTER)
+ADD_EXECUTABLE(winter2solv winter2solv.c)
+TARGET_LINK_LIBRARIES(winter2solv toolstuff libsolvext libsolv ${SYSTEM_LIBRARIES})
+
+SET (tools_lists ${tools_list} winter2solv)
+ENDIF (ENABLE_WINTER)
+
 IF (NOT WIN32)
 ADD_EXECUTABLE (repo2solv repo2solv.c )
 TARGET_LINK_LIBRARIES (repo2solv toolstuff libsolvext libsolv ${SYSTEM_LIBRARIES})

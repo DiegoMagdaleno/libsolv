@@ -11,6 +11,7 @@ SOLV_1.0 {
 		repo_add_autopattern;
 		repo_add_code11_products;
 		repo_add_conda;
+		repo_add_winter;
 		repo_add_content;
 		repo_add_comps;
 		repo_add_cudf;
