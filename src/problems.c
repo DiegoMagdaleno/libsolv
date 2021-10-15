@@ -1074,10 +1074,10 @@ solver_take_solution(Solver *solv, Id problem, Id solution, Queue *job)
  */
 
 static void
-findproblemrule_internal(Solver *solv, Id idx, Id *reqrp, Id *conrp, Id *sysrp, Id *jobrp, Id *blkrp, Map *rseen)
+findproblemrule_internal(Solver *solv, Id idx, Id *reqrp, Id *conrp, Id *sysrp, Id *jobrp, Id *blkrp, Id *scprp, Map *rseen)
 {
   Id rid, d;
-  Id lreqr, lconr, lsysr, ljobr, lblkr;
+  Id lreqr, lconr, lsysr, ljobr, lblkr, lscpr;
   Rule *r;
   Id jobassert = 0;
   int i, reqset = 0;	/* 0: unset, 1: installed, 2: jobassert, 3: assert */
@@ -1099,7 +1099,7 @@ findproblemrule_internal(Solver *solv, Id idx, Id *reqrp, Id *conrp, Id *sysrp, 
 
   /* the problem rules are somewhat ordered from "near to the problem" to
    * "near to the job" */
-  lreqr = lconr = lsysr = ljobr = lblkr = 0;
+  lreqr = lconr = lsysr = ljobr = lblkr = lscpr = 0;
   while ((rid = solv->learnt_pool.elements[idx++]) != 0)
     {
       assert(rid > 0);
@@ -1108,7 +1108,7 @@ findproblemrule_internal(Solver *solv, Id idx, Id *reqrp, Id *conrp, Id *sysrp, 
 	  if (MAPTST(rseen, rid - solv->learntrules))
 	    continue;
 	  MAPSET(rseen, rid - solv->learntrules);
-	  findproblemrule_internal(solv, solv->learnt_why.elements[rid - solv->learntrules], &lreqr, &lconr, &lsysr, &ljobr, &lblkr, rseen);
+	  findproblemrule_internal(solv, solv->learnt_why.elements[rid - solv->learntrules], &lreqr, &lconr, &lsysr, &ljobr, &lblkr, &lscpr, rseen);
 	}
       else if ((rid >= solv->jobrules && rid < solv->jobrules_end) || (rid >= solv->infarchrules && rid < solv->infarchrules_end) || (rid >= solv->duprules && rid < solv->duprules_end) || (rid >= solv->bestrules && rid < solv->bestrules_end) || (rid >= solv->yumobsrules && rid < solv->yumobsrules_end))
 	{
@@ -1124,6 +1124,11 @@ findproblemrule_internal(Solver *solv, Id idx, Id *reqrp, Id *conrp, Id *sysrp, 
 	{
 	  if (!*blkrp)
 	    *blkrp = rid;
+	}
+      else if (rid >= solv->strictrepopriorules && rid < solv->strictrepopriorules_end)
+	{
+	  if (!*scprp)
+	    *scprp = rid;
 	}
       else
 	{
@@ -1189,6 +1194,8 @@ findproblemrule_internal(Solver *solv, Id idx, Id *reqrp, Id *conrp, Id *sysrp, 
     *sysrp = lsysr;
   if (!*blkrp && lblkr)
     *blkrp = lblkr;
+  if (!*scprp && lscpr)
+    *scprp = lscpr;
 }
 
 /*
@@ -1203,12 +1210,12 @@ findproblemrule_internal(Solver *solv, Id idx, Id *reqrp, Id *conrp, Id *sysrp, 
 Id
 solver_findproblemrule(Solver *solv, Id problem)
 {
-  Id reqr, conr, sysr, jobr, blkr;
+  Id reqr, conr, sysr, jobr, blkr, srpr;
   Id idx = solv->problems.elements[2 * problem - 2];
   Map rseen;
-  reqr = conr = sysr = jobr = blkr = 0;
+  reqr = conr = sysr = jobr = blkr = srpr = 0;
   map_init(&rseen, solv->learntrules ? solv->nrules - solv->learntrules : 0);
-  findproblemrule_internal(solv, idx, &reqr, &conr, &sysr, &jobr, &blkr, &rseen);
+  findproblemrule_internal(solv, idx, &reqr, &conr, &sysr, &jobr, &blkr, &srpr, &rseen);
   map_free(&rseen);
   /* check if the request is about a not-installed package requiring a installed
    * package conflicting with the non-installed package. In that case return the conflict */
@@ -1238,6 +1245,8 @@ solver_findproblemrule(Solver *solv, Id problem)
     return conr;	/* some conflict */
   if (blkr)
     return blkr;	/* a blacklisted package */
+  if (srpr)
+    return srpr;	/* a strict repo priority */
   if (sysr)
     return sysr;	/* an update rule */
   if (jobr)
@@ -1357,7 +1366,7 @@ solver_problemruleinfo2str(Solver *solv, SolverRuleinfo type, Id source, Id targ
     case SOLVER_RULE_BLACK:
       return pool_tmpjoin(pool, "package ", pool_solvid2str(pool, source), " can only be installed by a direct request");
     case SOLVER_RULE_STRICT_REPO_PRIORITY:
-      return pool_tmpjoin(pool, "package ", pool_solvid2str(pool, source), " is excluded by strict repo priority");
+      return pool_tmpjoin(pool, "package '", pool_solvid2str(pool, source), "' is excluded by strict repo priority");
     case SOLVER_RULE_PKG_CONSTRAINS:
       s = pool_tmpjoin(pool, "package ", pool_solvid2str(pool, source), 0);
       s = pool_tmpappend(pool, s, " has constraint ", pool_dep2str(pool, dep));
