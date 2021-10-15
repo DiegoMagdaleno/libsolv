@@ -725,6 +725,12 @@ convertsolution(Solver *solv, Id why, Queue *solutionq)
       assert(solv->rules[why].p < 0);
       queue_push(solutionq, -solv->rules[why].p);
     }
+  if (why >= solv->strictrepopriorules && why < solv->strictrepopriorules_end)
+    {
+      queue_push(solutionq, SOLVER_SOLUTION_STRICTREPOPRIORITY);
+      assert(solv->rules[why].p < 0);
+      queue_push(solutionq, -solv->rules[why].p);
+    }
 }
 
 /*
@@ -1344,12 +1350,14 @@ solver_problemruleinfo2str(Solver *solv, SolverRuleinfo type, Id source, Id targ
     case SOLVER_RULE_PKG_SELF_CONFLICT:
       s = pool_tmpjoin(pool, "package ", pool_solvid2str(pool, source), " conflicts with ");
       return pool_tmpappend(pool, s, pool_dep2str(pool, dep), " provided by itself");
-    case SOLVER_RULE_YUMOBS:
+    case SOLVER_RULE_YUMOBS:<
       s = pool_tmpjoin(pool, "both package ", pool_solvid2str(pool, source), " and ");
       s = pool_tmpjoin(pool, s, pool_solvid2str(pool, target), " obsolete ");
       return pool_tmpappend(pool, s, pool_dep2str(pool, dep), 0);
     case SOLVER_RULE_BLACK:
       return pool_tmpjoin(pool, "package ", pool_solvid2str(pool, source), " can only be installed by a direct request");
+    case SOLVER_RULE_STRICT_REPO_PRIORITY:
+      return pool_tmpjoin(pool, "package ", pool_solvid2str(pool, source), " is excluded by strict repo priority");
     case SOLVER_RULE_PKG_CONSTRAINS:
       s = pool_tmpjoin(pool, "package ", pool_solvid2str(pool, source), 0);
       s = pool_tmpappend(pool, s, " has constraint ", pool_dep2str(pool, dep));
@@ -1415,6 +1423,11 @@ solver_solutionelement2str(Solver *solv, Id p, Id rp)
     }
   else if (p > 0 && rp == 0)
     return pool_tmpjoin(pool, "allow deinstallation of ", pool_solvid2str(pool, p), 0);
+  else if (p == SOLVER_SOLUTION_STRICTREPOPRIORITY)
+    {
+      Solvable *s = pool->solvables + rp;
+      return pool_tmpjoin(pool, "install ", pool_solvable2str(pool, s), " despite the repo priority");
+    }
   else if (p > 0 && rp > 0)
     {
       const char *sp = pool_solvid2str(pool, p);
